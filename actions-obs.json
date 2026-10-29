@@ -1,0 +1,5 @@
+[
+  { "type": "click", "selector": "#btn-obs-template" },
+  { "type": "click", "selector": "#btn-obs-apply" },
+  { "type": "assert", "selector": "#st-cape", "property": "text", "equals": "2271 Дж/кг" }
+]

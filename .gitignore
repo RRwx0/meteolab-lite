@@ -1,0 +1,16 @@
+# Артефакты браузерной проверки
+meteolab-lite-verify/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Локальные секреты и данные
+.env
+.meteolab/
+
+# Временные файлы
+*.zip
+*.log

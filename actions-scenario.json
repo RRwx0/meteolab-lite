@@ -1,0 +1,8 @@
+[
+  { "type": "click", "selector": "[data-preset=\"hail\"]" },
+  { "type": "click", "selector": "#btn-step5" },
+  { "type": "click", "selector": "#btn-step5" },
+  { "type": "click", "selector": "#btn-step5" },
+  { "type": "click", "selector": "#btn-radarwin" },
+  { "type": "click", "selector": "#radarwin-tabs button[data-radar-tab=\"cells\"]" }
+]

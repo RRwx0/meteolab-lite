@@ -1,0 +1,8 @@
+[
+  { "type": "click", "selector": "#btn-wts" },
+  { "type": "fill", "selector": "#wts-wmo", "value": "27612" },
+  { "type": "click", "selector": "#wts-last-month" },
+  { "type": "click", "selector": "#wts-tabs button[data-wts-tab=\"files\"]" },
+  { "type": "click", "selector": "#wts-tabs button[data-wts-tab=\"log\"]" },
+  { "type": "click", "selector": "#wts-close" }
+]

@@ -1,0 +1,467 @@
+<!DOCTYPE html>﻿
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MeteoLab Lite — численная лаборатория конвекции</title>
+<meta name="description" content="Облакоразрешающая модель глубокой конвекции в браузере: поле кучевых облаков, 11 типов гроз, зондирование, CAPE/CIN, объёмная визуализация и радар.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand__mark" aria-hidden="true"></span>
+    <span class="brand__name">MeteoLab <em>Lite</em></span>
+    <span class="brand__sub">численная лаборатория конвекции</span>
+  </div>
+  <div class="pills">
+    <span class="pill" id="pill-grid"><i>сетка</i> 48×48×36</span>
+    <span class="pill"><i>шаг</i> Δt 3 с</span>
+    <span class="pill" id="pill-cells"><i>ячеек</i> 0</span>
+    <span class="pill" id="pill-ms"><i>шаг</i> — мс</span>
+    <span class="pill" id="pill-fps"><i>fps</i> —</span>
+    <span class="pill pill--state" id="pill-state"><i>состояние</i> пауза</span>
+  </div>
+  <div class="topbar__actions">
+    <button class="btn btn--primary" id="btn-play" type="button">Запустить</button>
+    <button class="btn" id="btn-reset" type="button">Сброс</button>
+    <button class="btn btn--small" id="btn-step5" type="button">+5 мин</button>
+    <label class="btn btn--select">
+      <span>Скорость</span>
+      <select id="sel-speed">
+        <option value="1">×1</option>
+        <option value="2" selected>×2</option>
+        <option value="4">×4</option>
+        <option value="8">×8</option>
+      </select>
+    </label>
+    <button class="btn btn--small" id="btn-wts" type="button" title="Массовая загрузка зондирований Wyoming (WtS)">Зонды WtS ⧉</button>
+    <button class="btn" id="btn-focus" type="button">Во весь экран</button>
+  </div>
+</header>
+
+<main class="layout" id="layout">
+  <aside class="panel panel--left" aria-label="Зондирование и типы гроз">
+    <section class="block">
+      <h2 class="block__title">Тип грозы</h2>
+      <div class="storms" id="presets"></div>
+      <p class="storm-desc" id="preset-desc">Выберите среду: профиль, сдвиг и способ запуска конвекции.</p>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Термодинамика</h2>
+      <label class="slider">
+        <span class="slider__head">Температура у земли <b id="out-t0">32 °C</b></span>
+        <input type="range" data-param="t0" min="12" max="40" step="0.5" value="32">
+      </label>
+      <label class="slider">
+        <span class="slider__head">Влажность у земли <b id="out-rh0">58 %</b></span>
+        <input type="range" data-param="rh0" min="15" max="97" step="1" value="58">
+      </label>
+      <label class="slider">
+        <span class="slider__head">Градиент 0–3 км <b id="out-lapseLow">7,5 K/км</b></span>
+        <input type="range" data-param="lapseLow" min="4.5" max="9.8" step="0.1" value="7.5">
+      </label>
+      <label class="slider">
+        <span class="slider__head">Градиент 3–8 км <b id="out-lapseMid">6,8 K/км</b></span>
+        <input type="range" data-param="lapseMid" min="4" max="9.5" step="0.1" value="6.8">
+      </label>
+      <label class="slider">
+        <span class="slider__head">Высота тропопаузы <b id="out-zTrop">12 км</b></span>
+        <input type="range" data-param="zTrop" min="8" max="15" step="0.5" value="12">
+      </label>
+      <label class="slider">
+        <span class="slider__head">Влажность на 5 км <b id="out-rhMid">45 %</b></span>
+        <input type="range" data-param="rhMid" min="2" max="95" step="1" value="45">
+      </label>
+      <label class="slider">
+        <span class="slider__head">Влажность у тропопаузы <b id="out-rhTop">25 %</b></span>
+        <input type="range" data-param="rhTop" min="0" max="80" step="1" value="25">
+      </label>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Ветер и запуск</h2>
+      <label class="slider">
+        <span class="slider__head">Скорость 0 / 3 / 6 / 10 км <b id="out-windlow">7 · 13 · 23 · 32</b></span>
+        <div class="slider__group">
+          <input type="range" data-param="ws0" min="0" max="45" step="1" value="7">
+          <input type="range" data-param="ws3" min="0" max="45" step="1" value="13">
+          <input type="range" data-param="ws6" min="0" max="45" step="1" value="23">
+          <input type="range" data-param="ws10" min="0" max="45" step="1" value="32">
+        </div>
+      </label>
+      <label class="slider">
+        <span class="slider__head">Направление у земли <b id="out-wd0">160°</b></span>
+        <input type="range" data-param="wd0" min="0" max="350" step="10" value="160">
+      </label>
+      <label class="slider">
+        <span class="slider__head">Поворот к 10 км <b id="out-veer">+90°</b></span>
+        <input type="range" data-param="veer" min="-120" max="180" step="10" value="90">
+      </label>
+      <label class="slider">
+        <span class="slider__head">Импульс запуска <b id="out-bubble">2,6 K</b></span>
+        <input type="range" data-param="bubble" min="0" max="6" step="0.2" value="2.6">
+      </label>
+      <label class="slider">
+        <span class="slider__head">Прогрев поверхности <b id="out-heating">0,6</b></span>
+        <input type="range" data-param="heating" min="0" max="1.5" step="0.1" value="0.6">
+      </label>
+      <div class="row">
+        <label class="field">
+          <span>Запуск</span>
+          <select id="sel-mode">
+            <option value="single">Одна ячейка</option>
+            <option value="field" selected>Поле термиков</option>
+            <option value="line">Линия шквала</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Сетка</span>
+          <select id="sel-grid">
+            <option value="40">40×40 (быстро)</option>
+            <option value="48">48×48 (поле)</option>
+            <option value="56">56×56 (средне)</option>
+            <option value="120" selected>120×120 (большое поле)</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="block block--tight">
+      <h2 class="block__title">Skew-T</h2>
+      <canvas id="skew" class="skewt" height="320"></canvas>
+      <h2 class="block__title block__title--sub">Годограф 0–10 км</h2>
+      <canvas id="hodo" class="hodo" height="180"></canvas>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Реальное зондирование</h2>
+      <label class="slider">
+        <span class="slider__head">Сохранённые <b id="obs-status">—</b></span>
+        <select id="sel-obs" class="select select--wide">
+          <option value="">— мои зондирования —</option>
+        </select>
+      </label>
+      <div class="row">
+        <button class="btn btn--small" id="btn-obs-apply" type="button">Применить</button>
+        <button class="btn btn--small" id="btn-obs-del" type="button">Удалить</button>
+        <button class="btn btn--small" id="btn-obs-template" type="button">Шаблон</button>
+      </div>
+      <label class="slider">
+        <span class="slider__head">Текст UWyo / CSV / JSON</span>
+        <textarea id="obs-text" aria-label="Текст зондирования" class="textarea" rows="4" placeholder="%RAW% и строки pressure,height,temp,dwpt,dir,spd — или PRES HGHT TEMP DWPT DRCT SKNT
+1000.0 50 24.0 19.0 160 10"></textarea>
+      </label>
+      <div class="row">
+        <label class="field">
+          <span>Файл</span>
+          <input type="file" id="obs-file" aria-label="Файл зондирования" class="file" accept=".txt,.csv,.json,.snd">
+        </label>
+      </div>
+      <div class="row">
+        <input type="text" id="obs-url" aria-label="Ссылка на зондирование" class="input input--grow" placeholder="https://…/raob.csv">
+        <button class="btn btn--small" id="btn-obs-fetch" type="button">Загрузить</button>
+      </div>
+      <p class="note" id="obs-note">Архивы UWyo, IEM, SPC: вставьте текст, файл или ссылку. Список хранится в браузере.</p>
+    </section>
+  </aside>
+
+  <section class="stage">
+    <div class="stage__view">
+      <canvas id="gl" aria-label="Трёхмерная визуализация поля облаков"></canvas>
+      <div class="viewbar">
+        <div class="seg" id="view-mode">
+          <button type="button" class="seg__btn is-on" data-channel="0">Облако</button>
+          <button type="button" class="seg__btn" data-channel="2">Лёд</button>
+          <button type="button" class="seg__btn" data-channel="1">Осадки</button>
+        </div>
+        <label class="seg seg--range" title="Обрезка объёма по высоте">
+          <span>от</span>
+          <input type="range" id="clip" min="0" max="11" step="0.5" value="0">
+          <b id="clip-out">0 км</b>
+        </label>
+        <label class="seg seg--range">
+          <span>качество</span>
+          <input type="range" id="quality" min="48" max="144" step="8" value="96">
+        </label>
+        <button class="seg__standalone" id="btn-rotate" type="button" title="Авто-вращение">↻</button>
+        <button class="seg__standalone" id="btn-png" type="button" title="Снимок 3D-вида">PNG</button>
+        <button class="seg__standalone" id="btn-radarwin" type="button" title="Радар в отдельном окне">Радар ⧉</button>
+        <button class="seg__standalone" id="btn-tornado" type="button" title="Торнадо: только при благоприятных условиях">Торнадо</button>
+      </div>
+      <div class="markers" id="markers" aria-hidden="true"></div>
+      <div class="hint" id="gl-hint">мышь — вращение · колесо — масштаб · пробел — пауза</div>
+      <div class="gl-fallback" id="gl-fallback" hidden>
+        <b>WebGL 2 недоступен.</b> Объёмная визуализация отключена, но модель считается — смотрите радар и разрез.
+      </div>
+      <div class="legend" aria-hidden="true">
+        <span class="legend__bar"></span>
+        <span class="legend__labels"><i>10</i><i>30</i><i>50</i><i>70 dBZ</i></span>
+      </div>
+    </div>
+
+    <div class="stage__panels">
+      <div class="minipeg">
+        <div class="minipeg__head">
+          <div class="seg seg--sm" id="panel-mode">
+            <button type="button" class="seg__btn is-on" data-panel="plan">Радар, план</button>
+            <button type="button" class="seg__btn" data-panel="section">Разрез x–z</button>
+          </div>
+          <span class="minipeg__meta" id="panel-meta">—</span>
+        </div>
+        <canvas id="radar" class="radar"></canvas>
+        <canvas id="section" class="radar" hidden></canvas>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline__row">
+          <button class="btn btn--small" id="btn-step" type="button">+1 мин</button>
+          <div class="timeline__time"><span id="sim-time">T+00:00</span><i>модельное время</i></div>
+          <div class="timeline__meta" id="sim-meta">—</div>
+        </div>
+        <div class="timeline__track"><span class="timeline__fill" id="sim-bars"></span></div>
+        <div class="timeline__row timeline__row--sub">
+          <span class="mini" id="live-cells">ячеек: 0</span>
+          <span class="mini" id="live-area">восходящих столбцов: 0</span>
+          <span class="mini" id="live-top">верх: 0 км</span>
+          <span class="mini" id="live-rain">дождь: 0 мм/ч</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel panel--right" aria-label="Диагностика">
+    <section class="block">
+      <h2 class="block__title">Среда</h2>
+      <dl class="stats" id="stats-env">
+        <div><dt>CAPE</dt><dd id="st-cape">—</dd></div>
+        <div><dt>CIN</dt><dd id="st-cin">—</dd></div>
+        <div><dt>DCAPE</dt><dd id="st-dcape">—</dd></div>
+        <div><dt>PWAT</dt><dd id="st-pwat">—</dd></div>
+        <div><dt>LCL</dt><dd id="st-lcl">—</dd></div>
+        <div><dt>LFC</dt><dd id="st-lfc">—</dd></div>
+        <div><dt>EL</dt><dd id="st-el">—</dd></div>
+        <div><dt>Сдвиг 0–6</dt><dd id="st-shear">—</dd></div>
+        <div><dt>Сдвиг 0–1</dt><dd id="st-shear01">—</dd></div>
+        <div><dt>SRH 0–3</dt><dd id="st-srh">—</dd></div>
+        <div><dt>BRN</dt><dd id="st-brn">—</dd></div>
+        <div><dt>Тип среды</dt><dd id="st-regime">—</dd></div>
+      </dl>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Сигнатуры полей</h2>
+      <div class="sigs">
+        <div class="sig"><span>Осадки</span><i class="sig__bar sig__bar--dbz"></i><b id="sig-dbz">—</b></div>
+        <div class="sig"><span>Лёд</span><i class="sig__bar sig__bar--ice"></i><b id="sig-ice">—</b></div>
+        <div class="sig"><span>Завихрённость ζ</span><i class="sig__bar sig__bar--vort"></i><b id="sig-vort">—</b></div>
+        <div class="sig"><span>Температура θ′</span><i class="sig__bar sig__bar--temp"></i><b id="sig-temp">—</b></div>
+        <div class="sig"><span>Вертикальный поток w</span><i class="sig__bar sig__bar--w"></i><b id="sig-w">—</b></div>
+        <div class="sig"><span>Влажность q_v</span><i class="sig__bar sig__bar--hum"></i><b id="sig-qv">—</b></div>
+        <div class="sig"><span>Вращение UH</span><i class="sig__bar sig__bar--uh"></i><b id="sig-uh">—</b></div>
+        <div class="sig"><span>Холодный купол</span><i class="sig__bar sig__bar--cold"></i><b id="sig-cold">—</b></div>
+      </div>
+      <p class="note" id="sig-note">Отражаемость и лёд — как на радаре; остальные — экстремумы по полю.</p>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Поле и ячейки</h2>
+
+      <dl class="stats stats--live">
+        <div><dt>max w</dt><dd id="st-w">—</dd></div>
+        <div><dt>ячеек</dt><dd id="st-cells">—</dd></div>
+        <div><dt>верх облака</dt><dd id="st-top">—</dd></div>
+        <div><dt>max dBZ</dt><dd id="st-dbz">—</dd></div>
+        <div><dt>дождь</dt><dd id="st-rain">—</dd></div>
+        <div><dt>площадь дождя</dt><dd id="st-rainarea">—</dd></div>
+        <div><dt>холодный отток</dt><dd id="st-cold">—</dd></div>
+        <div><dt>UH 2–5 км</dt><dd id="st-uh">—</dd></div>
+        <div><dt>мезоциклонов</dt><dd id="st-meso">—</dd></div>
+        <div><dt>восходящих столбцов</dt><dd id="st-area">—</dd></div>
+        <div><dt>режим</dt><dd id="st-mode">—</dd></div>
+      </dl>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Ход развития</h2>
+      <select id="sel-series" class="select select--wide">
+        <option value="w">max w, м/с</option>
+        <option value="top">верх облака, км</option>
+        <option value="dbz">max dBZ</option>
+        <option value="rain">дождь, мм/ч</option>
+        <option value="uh">UH, м²/с²</option>
+        <option value="cells">число ячеек</option>
+      </select>
+      <canvas id="chart" class="chart" height="130"></canvas>
+      <div class="chart__legend"><span id="chart-legend">—</span><span id="chart-peak">—</span></div>
+    </section>
+
+    <section class="block block--tight block--actions">
+
+      <button class="btn btn--wide" id="btn-csv" type="button">Скачать CSV диагностики</button>
+      <button class="btn btn--wide" id="btn-json" type="button">Скачать профиль JSON</button>
+      <button class="btn btn--wide" id="btn-about" type="button">О модели и ограничения</button>
+      <p class="note">Учебная модель: не прогноз погоды. Упрощения перечислены в «О модели».</p>
+    </section>
+  </aside>
+</main>
+
+<div class="tornadown" id="tornadown" hidden>
+  <div class="radarwin__head" id="tornadown-head">
+    <span class="radarwin__title">Торнадо · симуляция</span>
+    <button class="radarwin__close" id="tornadown-close" type="button" aria-label="Закрыть торнадо">×</button>
+  </div>
+  <canvas id="tornadown-canvas" class="tornadown__canvas"></canvas>
+  <div class="tornadown__body">
+    <div class="tornadown__verdict" id="tornadown-verdict">—</div>
+    <ul class="checklist" id="tornadown-list"></ul>
+  </div>
+</div>
+
+<div class="radarwin" id="radarwin" hidden>
+  <div class="radarwin__head" id="radarwin-head">
+    <span class="radarwin__title">Радар · симуляция</span>
+    <div class="radarwin__actions">
+      <div class="seg seg--sm" id="radarwin-tabs">
+        <button type="button" class="seg__btn is-on" data-radar-tab="dbz">dBZ</button>
+        <button type="button" class="seg__btn" data-radar-tab="vel">Скорость</button>
+        <button type="button" class="seg__btn" data-radar-tab="section">Разрез</button>
+        <button type="button" class="seg__btn" data-radar-tab="cells">Ячейки</button>
+      </div>
+      <button class="radarwin__close" id="radarwin-close" type="button" aria-label="Закрыть радар">×</button>
+    </div>
+  </div>
+  <div class="radarwin__fields">
+    <select id="radar-field" class="select select--wide" aria-label="Сигнатура поля">
+      <option value="dbz">Осадки, dBZ</option>
+      <option value="ice">Лёд</option>
+      <option value="zeta">Завихрённость ζ</option>
+      <option value="temp">Температура θ′</option>
+      <option value="w">Вертикальные потоки w</option>
+      <option value="moist">Влажность q_v</option>
+      <option value="uh">Вращение UH 2–5 км</option>
+      <option value="cold">Холодный купол</option>
+    </select>
+  </div>
+  <canvas id="radarwin-canvas" class="radarwin__canvas"></canvas>
+  <div class="radarwin__foot" id="radarwin-foot">—</div>
+</div>
+
+
+
+<div class="wts" id="wts" hidden>
+  <div class="wts__box" role="dialog" aria-modal="true" aria-labelledby="wts-title">
+    <div class="wts__head">
+      <span class="wts__title" id="wts-title">WtS · массовая загрузка зондирований Wyoming</span>
+      <button class="wts__conn" id="wts-conn" type="button" title="Проверить связь с Python-сервером WtS">сервер не проверен</button>
+      <button class="radarwin__close" id="wts-close" type="button" aria-label="Закрыть массовую загрузку">×</button>
+    </div>
+    <div class="wts__body">
+      <form class="wts__form" id="wts-form" novalidate>
+        <label class="field">
+          <span>Станция</span>
+          <select id="wts-station" class="select"></select>
+        </label>
+        <label class="field">
+          <span>или WMO ID</span>
+          <input type="text" id="wts-wmo" class="input" inputmode="numeric" value="24959" autocomplete="off">
+        </label>
+        <div class="row">
+          <label class="field">
+            <span>От</span>
+            <input type="date" id="wts-start" class="input" value="2024-01-01">
+          </label>
+          <label class="field">
+            <span>До</span>
+            <input type="date" id="wts-end" class="input" value="2024-01-31">
+          </label>
+        </div>
+        <div class="row">
+          <button class="btn btn--small" id="wts-last-month" type="button">Последний месяц</button>
+          <button class="btn btn--small" id="wts-last-year" type="button">Последний год</button>
+        </div>
+        <div class="row wts__hours">
+          <label class="check"><input type="checkbox" id="wts-h00" checked> 00 UTC</label>
+          <label class="check"><input type="checkbox" id="wts-h12" checked> 12 UTC</label>
+        </div>
+        <div class="row">
+          <label class="field">
+            <span>Потоков</span>
+            <input type="number" id="wts-workers" class="input" min="1" max="10" step="1" value="3">
+          </label>
+          <label class="field">
+            <span>Задержка, с</span>
+            <input type="number" id="wts-delay" class="input" min="0" max="30" step="0.1" value="0.5">
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" id="wts-organize" checked> Сортировать год / месяц / срок</label>
+        <div class="row">
+          <button class="btn btn--primary" id="wts-start-btn" type="submit">СТАРТ</button>
+          <button class="btn" id="wts-stop-btn" type="button" disabled>СТОП</button>
+        </div>
+        <p class="note" id="wts-note">Загрузка идёт на сервере: Wyoming → разбор → .snd для SHARPpy. Демо-данные не подставляются.</p>
+      </form>
+
+      <div class="wts__run">
+        <div class="wts__bar"><span class="wts__fill" id="wts-fill"></span></div>
+        <div class="wts__counters">
+          <span><i>всего</i><b id="wts-total">0</b></span>
+          <span><i>прогресс</i><b id="wts-progress">0 / 0</b></span>
+          <span><i>успешно</i><b id="wts-ok">0</b></span>
+          <span><i>ошибки</i><b id="wts-failed">0</b></span>
+          <span><i>пропущено</i><b id="wts-skipped">0</b></span>
+        </div>
+        <div class="seg seg--sm wts__tabs" id="wts-tabs">
+          <button class="seg__btn is-on" data-wts-tab="log" type="button">Журнал</button>
+          <button class="seg__btn" data-wts-tab="files" type="button">Файлы</button>
+          <button class="btn btn--small wts__clearlog" id="wts-clear-log" type="button">Очистить</button>
+        </div>
+        <div class="wts__log" id="wts-log" role="log" aria-live="polite">
+          <p class="wts__empty">Журнал пуст: запустите загрузку.</p>
+        </div>
+        <div class="wts__files" id="wts-files" hidden></div>
+        <div class="wts__foot">
+          <span id="wts-status">Готов к работе</span>
+          <a class="btn btn--small" id="wts-zip" href="#" hidden>Скачать ZIP</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <button class="modal__close" id="modal-close" type="button" aria-label="Закрыть">×</button>
+
+    <h2 id="modal-title">Как устроена MeteoLab Lite</h2>
+    <p>Облегчённая модель глубокой конвекции в духе MeteoLab: зондирование задаёт среду, модель интегрирует неупругие уравнения на сетке до 56×56×36 узлов (Δx = 1 км, Δz = 340 м, шаг 3 с) прямо в браузере. Режимы запуска — одна ячейка, поле термиков или линия шквала — дают разные типы гроз: от импульсной до суперячейки и мезомасштабного кластера.</p>
+    <h3>Что считается</h3>
+    <ul>
+      <li><b>Динамика:</b> полулагранжева адвекция, плавучесть B = g·[θ′/θ₀ + 0,61·q′ − Σq_cond], проекция давления на шахматной MAC-сетке (скорости на гранях, давление в центрах, SOR по Пуассону), подсеточная диффузия, губка выше 11 км.</li>
+      <li><b>Микрофизика:</b> насыщающая коррекция с теплотой конденсации, автоконверсия и аккреция Кесслера, испарение дождя (холодный отток), облачный лёд с медленным падением, таяние.</li>
+      <li><b>Осадки:</b> оседание потоком с V_t = 36,34·(ρq_r)^0,1364, накопление по столбцам, отражаемость Z = 3,63·10⁹·(ρq_r)^1,75.</li>
+      <li><b>Диагностика:</b> частица от поверхности, CAPE/CIN/DCAPE/LCL/LFC/EL, PWAT, сдвиг 0–6 и 0–1 км, SRH 0–3 км, BRN, движение правой ячейки по Банкерсу, UH 2–5 км, счётчик ячеек по связным восходящим столбцам.</li>
+    </ul>
+    <h3>Чем отличается от MeteoLab</h3>
+    <ul>
+      <li>Схема переноса — полулагранжева, а не WENO5 + RK3: быстрее, но сильнее размывает поля; баланс воды не сохраняется строго.</li>
+      <li>Приближение Буссинеска с постоянной плотностью вместо неупругого; давление — итерационный решатель вместо точного спектрального.</li>
+      <li>Сетка 1 км: суперячейка воспроизводится качественно, град и двухмоментная микрофизика не моделируются.</li>
+      <li>Нет радиации, ночного выхолаживания, рельефа, городских островов тепла и усвоения реальных данных.</li>
+    </ul>
+    <p class="note">Все числа на экране — результат счёта этой упрощённой модели, а не оперативные данные.</p>
+  </div>
+</div>
+
+<script src="sounding.js"></script>
+<script src="model.js"></script>
+<script src="render3d.js"></script>
+<script src="radar.js"></script>
+<script src="tornado.js"></script>
+<script src="presets.js"></script>
+<script src="observations.js"></script>
+<script src="wts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

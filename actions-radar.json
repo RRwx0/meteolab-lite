@@ -1,0 +1,9 @@
+[
+  { "type": "click", "selector": "#btn-radarwin" },
+  { "type": "click", "selector": "#radarwin-tabs button[data-radar-tab=\"vel\"]" },
+  { "type": "click", "selector": "#radarwin-tabs button[data-radar-tab=\"section\"]" },
+  { "type": "click", "selector": "#radarwin-tabs button[data-radar-tab=\"dbz\"]" },
+  { "type": "click", "selector": "#radarwin-close" },
+  { "type": "click", "selector": "#btn-step5" },
+  { "type": "click", "selector": "#btn-radarwin" }
+]

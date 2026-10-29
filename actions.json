@@ -1,0 +1,18 @@
+[
+  { "type": "click", "selector": "#btn-play" },
+  { "type": "assert", "selector": "#btn-play", "property": "text", "equals": "Запустить" },
+  { "type": "click", "selector": "#btn-play" },
+  { "type": "assert", "selector": "#btn-play", "property": "text", "equals": "Пауза" },
+  { "type": "click", "selector": "#btn-reset" },
+  { "type": "click", "selector": "[data-preset=\"lp\"]" },
+  { "type": "assert", "selector": "#out-t0", "property": "text", "equals": "33,0 °C" },
+  { "type": "click", "selector": "[data-preset=\"squall\"]" },
+  { "type": "click", "selector": "#view-mode button[data-channel=\"2\"]" },
+  { "type": "click", "selector": "#panel-mode button[data-panel=\"section\"]" },
+  { "type": "click", "selector": "#panel-mode button[data-panel=\"plan\"]" },
+  { "type": "click", "selector": "#btn-focus" },
+  { "type": "assert", "selector": "#btn-focus", "property": "text", "equals": "Свернуть" },
+  { "type": "click", "selector": "#btn-focus" },
+  { "type": "click", "selector": "#btn-about" },
+  { "type": "assert", "selector": "#modal-title", "property": "text", "equals": "Как устроена MeteoLab Lite" }
+]
